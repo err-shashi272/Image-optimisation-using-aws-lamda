@@ -22,6 +22,7 @@ exports.handler = function(event, context, callback) {
   const width = parseInt(match[2], 10);
   const height = parseInt(match[3], 10);
   const originalKey = match[4];
+  const image_type = originalKey.split('.')[1];
 
   if(ALLOWED_DIMENSIONS.size > 0 && !ALLOWED_DIMENSIONS.has(dimensions)) {
      callback(null, {
@@ -31,25 +32,47 @@ exports.handler = function(event, context, callback) {
     });
     return;
   }
-
-  S3.getObject({Bucket: BUCKET, Key: originalKey}).promise()
-    .then(data => Sharp(data.Body)
-      .resize(width, height)
-      .toFormat('png')
-      .toBuffer()
-    )
-    .then(buffer => S3.putObject({
-        Body: buffer,
-        Bucket: BUCKET,
-        ContentType: 'image/png',
-        Key: key,
-      }).promise()
-    )
-    .then(() => callback(null, {
-        statusCode: '301',
-        headers: {'location': `${URL}/${key}`},
-        body: '',
-      })
-    )
-    .catch(err => callback(err))
+  if(image_type == 'png') {
+    S3.getObject({Bucket: BUCKET, Key: originalKey}).promise()
+      .then(data => Sharp(data.Body)
+        .resize(width, height)
+        .toFormat('png')
+        .toBuffer()
+      )
+      .then(buffer => S3.putObject({
+          Body: buffer,
+          Bucket: BUCKET,
+          ContentType: 'image/png',
+          Key: key,
+        }).promise()
+      )
+      .then(() => callback(null, {
+          statusCode: '200',
+          headers: {'location': `${URL}/${key}`},
+          body: '',
+        })
+      )
+      .catch(err => callback(err)) 
+  }else{
+      S3.getObject({Bucket: BUCKET, Key: originalKey}).promise()
+      .then(data => Sharp(data.Body)
+        .resize(width, height)
+        .toFormat('jpeg')
+        .toBuffer()
+      )
+      .then(buffer => S3.putObject({
+          Body: buffer,
+          Bucket: BUCKET,
+          ContentType: 'image/jpeg',
+          Key: key,
+        }).promise()
+      )
+      .then(() => callback(null, {
+          statusCode: '200',
+          headers: {'location': `${URL}/${key}`},
+          body: '',
+        })
+      )
+      .catch(err => callback(err)) 
+  }
 }
